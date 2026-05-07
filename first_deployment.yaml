@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: instagram-frontend
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: frontend
+  strategy:
+    type: RollingUpdate
+  template:
+    # Obligatoire : le modèle de Pod à créer
+    metadata:
+      labels:
+        app: frontend # Doit être identique au matchLabels
+    spec:
+      containers:
+        - name: frontend-container
+          image: nginx:1.25 # Exemple d'image
+          ports:
+            - containerPort: 80
