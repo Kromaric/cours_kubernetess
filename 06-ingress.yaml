@@ -1,6 +1,7 @@
 # k3d embarque Traefik (pas nginx) : la réécriture /api/* -> /*
 # se fait via un Middleware StripPrefix référencé par annotation.
-apiVersion: traefik.io/v1alpha1
+# NB : le Traefik de ce k3s expose l'ancien groupe d'API containo.us.
+apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
 metadata:
   name: strip-api-prefix
