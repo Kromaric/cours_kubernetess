@@ -23,7 +23,7 @@ function App() {
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-6xl mx-auto p-6">
         <h1 className="text-4xl font-bold mb-6 text-gray-800">
-          🍽️ Gestion Restaurant
+          🍽️ Gestion Restaurant Romaric 
         </h1>
 
         <div className="flex gap-2 mb-6 overflow-x-auto">
