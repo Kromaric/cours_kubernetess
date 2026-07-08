@@ -1,0 +1,55 @@
+version: '3.8'
+
+networks:
+  gitea:
+    external: false
+  # Réseau créé par k3d — permet au runner de joindre le registre
+  # et l'API server du cluster. Le cluster doit exister AVANT le `up`.
+  k3d-restaurant-cluster:
+    external: true
+
+services:
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea-restaurant
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=sqlite3
+      - GITEA__server__DOMAIN=localhost
+      - GITEA__server__SSH_DOMAIN=localhost
+      - GITEA__server__ROOT_URL=http://localhost:3100/
+      - GITEA__security__INSTALL_LOCK=true
+      - GITEA__actions__ENABLED=true
+    restart: always
+    networks:
+      - gitea
+      - k3d-restaurant-cluster
+    volumes:
+      - ./gitea/data:/data
+      - ./gitea/config:/etc/gitea
+    ports:
+      - "3100:3000"
+      - "223:22"
+
+  runner:
+    image: gitea/act_runner:latest
+    container_name: runner-restaurant
+    environment:
+      - CONFIG_FILE=/config.yaml
+      - GITEA_INSTANCE_URL=http://gitea-restaurant:3000
+      # Token à générer après le premier démarrage de Gitea :
+      #   docker exec -u git gitea-restaurant gitea actions generate-runner-token
+      - GITEA_RUNNER_REGISTRATION_TOKEN=McqkFv3U2GjosucRJwaYXzYMBZBmWHLstM7f9HXs
+      - GITEA_RUNNER_NAME=restaurant-runner
+      - GITEA_RUNNER_LABELS=ubuntu-latest:docker://node:18-bullseye,ubuntu-24.04:docker://node:18-bullseye,ubuntu-22.04:docker://node:18-bullseye
+    restart: unless-stopped
+    networks:
+      - gitea
+      - k3d-restaurant-cluster
+    volumes:
+      - ./runner/data:/data
+      - ./runner-config.yaml:/config.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - gitea

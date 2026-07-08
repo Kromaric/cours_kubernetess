@@ -1,0 +1,8 @@
+01-config.yaml
+cours/
+# Données persistantes de l'infra locale (Gitea + runner)
+infra/gitea/
+infra/runner/data/
+
+# Binaires locaux
+bin/

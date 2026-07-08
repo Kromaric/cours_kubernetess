@@ -1,0 +1,92 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # ── 1. Build des composants ─────────────────────────────────────
+      # Le stage "builder" des Dockerfiles compile le composant
+      # (nest build / react-scripts build). Si la compilation échoue,
+      # le pipeline s'arrête ici.
+      - name: Build backend component (NestJS)
+        run: docker build --target builder -t restaurant-backend:build ./my_crud_app
+
+      - name: Build frontend component (React)
+        run: docker build --target builder -t restaurant-frontend:build ./restaurant-front
+
+      # ── 2. Build des images dans leur nouvelle version ──────────────
+      # Chaque commit produit une version d'image unique (tag = SHA).
+      # Le tag latest est maintenu pour le premier déploiement.
+      - name: Build backend image (version ${{ github.sha }})
+        run: |
+          docker build -t localhost:5002/restaurant-backend:${{ github.sha }} \
+                       -t localhost:5002/restaurant-backend:latest \
+                       ./my_crud_app
+
+      - name: Build frontend image (version ${{ github.sha }})
+        run: |
+          docker build -t localhost:5002/restaurant-frontend:${{ github.sha }} \
+                       -t localhost:5002/restaurant-frontend:latest \
+                       ./restaurant-front
+
+      # ── 3. Push vers le registry local ──────────────────────────────
+      - name: Push images to local k3d registry
+        run: |
+          docker push localhost:5002/restaurant-backend:${{ github.sha }}
+          docker push localhost:5002/restaurant-backend:latest
+          docker push localhost:5002/restaurant-frontend:${{ github.sha }}
+          docker push localhost:5002/restaurant-frontend:latest
+
+      # ── 4. Déploiement + rollout du composant ───────────────────────
+      - name: Deploy to K3s cluster
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
+          export KUBECONFIG=./kubeconfig.yaml
+
+          # Le job tourne sur le réseau docker du cluster : on remplace
+          # l'adresse locale par le hostname interne de l'API server.
+          sed -i 's|https://127.0.0.1:.*|https://k3d-restaurant-cluster-server-0:6443|g' kubeconfig.yaml
+          sed -i 's|https://0.0.0.0:.*|https://k3d-restaurant-cluster-server-0:6443|g' kubeconfig.yaml
+          sed -i 's|https://host.docker.internal:.*|https://k3d-restaurant-cluster-server-0:6443|g' kubeconfig.yaml
+
+          # Le certificat est émis pour localhost/127.0.0.1
+          kubectl config set-cluster k3d-restaurant-cluster --insecure-skip-tls-verify=true
+
+          kubectl apply -f 00-namespace.yaml
+
+          # 01-config.yaml (Secret + ConfigMap) est volontairement hors du dépôt.
+          # Il doit être appliqué une fois manuellement depuis la machine hôte :
+          #   kubectl apply -f 01-config.yaml
+          if [ -f 01-config.yaml ]; then
+            kubectl apply -f 01-config.yaml
+          else
+            echo "01-config.yaml absent du depot (normal) : Secret/ConfigMap geres manuellement."
+          fi
+
+          kubectl apply -f 02-postgres.yaml
+          kubectl apply -f 04-backend.yaml
+          kubectl apply -f 05-frontend.yaml
+          kubectl apply -f 06-ingress.yaml
+          kubectl apply -f 07-monitoring.yaml
+
+          # Rollout : on pointe les deployments vers la nouvelle version
+          # de l'image (rolling update, zéro interruption).
+          kubectl set image deployment/backend \
+            backend=restaurant-registry:5000/restaurant-backend:${{ github.sha }} -n restaurant
+          kubectl set image deployment/frontend \
+            frontend=restaurant-registry:5000/restaurant-frontend:${{ github.sha }} -n restaurant
+
+          kubectl rollout status deployment/backend -n restaurant --timeout=180s
+          kubectl rollout status deployment/frontend -n restaurant --timeout=180s
