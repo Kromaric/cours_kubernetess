@@ -80,6 +80,7 @@ jobs:
           kubectl apply -f 05-frontend.yaml
           kubectl apply -f 06-ingress.yaml
           kubectl apply -f 07-monitoring.yaml
+          kubectl apply -f 08-keycloak.yaml
 
           # Rollout : on pointe les deployments vers la nouvelle version
           # de l'image (rolling update, zéro interruption).

@@ -8,6 +8,7 @@ import { ClientsModule } from './clients/clients.module';
 import { TablesModule } from './tables/tables.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { CommandesModule } from './commandes/commandes.module';
+import { AuthModule } from './auth/auth.module';
 
 
 @Module({
@@ -20,6 +21,7 @@ import { CommandesModule } from './commandes/commandes.module';
     TablesModule,
     ReservationsModule,
     CommandesModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -7,9 +7,11 @@ import {
   Delete,
   Param,
   Body,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { ClientsService } from './clients.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 // Interface locale
 interface Client {
@@ -112,9 +114,12 @@ export class ClientsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Supprimer un client' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Supprimer un client (protégé par Keycloak)' })
   @ApiParam({ name: 'id', description: 'ID du client à supprimer', example: 1 })
   @ApiResponse({ status: 200, description: 'Client supprimé avec succès' })
+  @ApiResponse({ status: 401, description: 'Token JWT manquant ou invalide' })
   @ApiResponse({ status: 404, description: 'Client non trouvé' })
   remove(@Param('id') id: string) {
     this.clientsService.remove(Number(id));
