@@ -40,7 +40,7 @@ services:
       - GITEA_INSTANCE_URL=http://gitea-restaurant:3000
       # Token à générer après le premier démarrage de Gitea :
       #   docker exec -u git gitea-restaurant gitea actions generate-runner-token
-      - GITEA_RUNNER_REGISTRATION_TOKEN=McqkFv3U2GjosucRJwaYXzYMBZBmWHLstM7f9HXs
+      - GITEA_RUNNER_REGISTRATION_TOKEN=REMPLACER_PAR_LE_TOKEN 
       - GITEA_RUNNER_NAME=restaurant-runner
       - GITEA_RUNNER_LABELS=ubuntu-latest:docker://node:18-bullseye,ubuntu-24.04:docker://node:18-bullseye,ubuntu-22.04:docker://node:18-bullseye
     restart: unless-stopped
